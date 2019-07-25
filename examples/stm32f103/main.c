@@ -6,6 +6,7 @@
 #include <libopencm3/cm3/nvic.h>
 #include <libopencm3/cm3/scb.h>
 #include <libopencm3/stm32/spi.h>
+#include <libopencm3/stm32/exti.h>
 
 #include <unistd.h>
 #include <string.h>
@@ -161,15 +162,45 @@ uint8_t mac[6] = {0x0E, 0x00, 0x00, 0x00, 0x00, 0x02};
 uint8_t bcast[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 struct enc28j60_state_s state;
+bool configured = false;
 
 static void enc28j60setup(struct enc28j60_state_s *state)
 {
     // interrupt pin
     gpio_set_mode(GPIOB, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, GPIO1);
 
+    // enable interrupt
+    nvic_enable_irq(NVIC_EXTI1_IRQ);
+    exti_select_source(EXTI1, GPIOB);
+    exti_set_trigger(EXTI1, EXTI_TRIGGER_FALLING);
+    exti_enable_request(EXTI1);
+
     enc28j60_init(state, spi_rw, spi_cs);
     enc28j60_configure(state, mac, 4096, false);
     enc28j60_interrupt_enable(state, true);
+}
+
+static uint8_t buf[1518];
+void exti1_isr(void)
+{
+    if (!configured)
+    {
+        exti_reset_request(EXTI1);
+        return;
+    }
+    if (!enc28j60_has_package(&state))
+    {
+        exti_reset_request(EXTI1);
+        return;
+    }
+
+    uint32_t status, crc;
+    size_t len = enc28j60_read_packet(&state, buf, 1518, &status, &crc);
+    char rb[200];
+    snprintf(rb, 200, "len=%i, crc=%08X, status=%08X. dst = %02X:%02X:%02X:%02X:%02X:%02X src = %02X:%02X:%02X:%02X:%02X:%02X",
+             len, crc, status, buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9], buf[10], buf[11]);
+    print(rb, -1);
+    exti_reset_request(EXTI1);
 }
 
 void hard_fault_handler(void)
@@ -203,12 +234,13 @@ int main(void)
                               0x04};
 
     uint8_t status[7];
-    uint8_t buf[1518];
+    
+    configured = true;
     while(1)
     {
-        while (1)
+        /*while (1)
         {
-        /*    if (enc28j60_tx_ready(&state))
+            if (enc28j60_tx_ready(&state))
                 break;
             if (enc28j60_tx_err(&state, status))
             {
@@ -217,18 +249,10 @@ int main(void)
                 print(buf, -1);
                 print("tx error", -1);
                 break;
-            }*/
-            if (enc28j60_has_package(&state))
-                break;
+            }
         }
-        uint32_t status, crc;
-        size_t len = enc28j60_read_packet(&state, buf, 1518, &status, &crc);
-        char rb[200];
-        snprintf(rb, 200, "len=%i, crc=%08X, status=%08X. dst = %02X:%02X:%02X:%02X:%02X:%02X src = %02X:%02X:%02X:%02X:%02X:%02X",
-                len, crc, status, buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9], buf[10], buf[11]);
-        print(rb, -1);
-        //enc28j60_send_data(&state, mac, bcast, eth_packet, sizeof(eth_packet));
-
+        enc28j60_send_data(&state, mac, bcast, eth_packet, sizeof(eth_packet));
+        */
     }
     return 0;
 }
