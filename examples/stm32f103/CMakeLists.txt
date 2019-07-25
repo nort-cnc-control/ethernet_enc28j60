@@ -12,3 +12,4 @@ target_link_libraries(controller.elf enc28j60 opencm3_stm32f1)
 
 add_custom_target(controller.bin ALL arm-none-eabi-objcopy -O binary controller.elf controller.bin)
 add_dependencies(controller.bin controller.elf)
+
