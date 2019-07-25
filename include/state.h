@@ -10,6 +10,8 @@ struct enc28j60_state_s {
     uint16_t recv_buffer_start;
     uint16_t recv_buffer_last;
 
+    size_t recv_buffer_size;
+
     uint8_t (*spi_rw)(uint8_t);
     void (*spi_cs)(uint8_t);
 

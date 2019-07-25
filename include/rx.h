@@ -2,5 +2,7 @@
 
 #include <unistd.h>
 #include <state.h>
+#include <stdbool.h>
 
-size_t enc28j60_received_data_length(struct enc28j60_state_s *state);
+size_t enc28j60_read_packet(struct enc28j60_state_s *state, uint8_t *buf, size_t maxlen, uint32_t *status, uint32_t *crc);
+bool enc28j60_has_package(struct enc28j60_state_s *state);

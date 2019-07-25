@@ -2,7 +2,7 @@
 #include <registers.h>
 #include <stdbool.h>
 
-#define CMD_SRC 0xE0
+#define CMD_SRC (0xE0 | 0x1F)
 
 static volatile int i;
 
@@ -10,10 +10,11 @@ void enc28j60_reset(struct enc28j60_state_s *state)
 {
     state->spi_cs(0);
     state->spi_rw(CMD_SRC);
+    state->spi_rw(0xFF);
     state->spi_cs(1);
     
-    for (i = 0; i < 1000UL; i++)
-        ;
+    for (i = 0; i < 1000000UL; i++)
+        __asm__("nop");
     state->current_bank = 0;
 }
 

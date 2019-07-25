@@ -13,6 +13,8 @@ void enc28j60_configure(struct enc28j60_state_s *state,
                         uint16_t rx_buffer_size,
                         bool full_duplex)
 {
+    state->recv_buffer_size = rx_buffer_size;
+
     state->recv_buffer_start = 0;
     state->recv_buffer_last = (rx_buffer_size-1) & 0x1FFF;
 
@@ -26,6 +28,10 @@ void enc28j60_configure(struct enc28j60_state_s *state,
 
     enc28j60_set_bits8(state, ECON2, 1 << 7); // auto increment pointer wher r / w
 
+    while (enc28j60_read_register8(state, EPKTCNT) > 0)
+        enc28j60_set_bits8(state, ECON2, 1<<6);
+
+    enc28j60_write_register16(state, ERXWRPTL, 0);
     enc28j60_write_register16(state, ERXRDPTL, 0);
 
     // See ENC28J60 datasheet

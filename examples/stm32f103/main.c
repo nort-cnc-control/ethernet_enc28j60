@@ -67,7 +67,7 @@ void spi2_isr(void)
 
 static uint8_t spi_rw(uint8_t d)
 {
-    spi_write(SPI2, d);
+    spi_send(SPI2, d);
     return spi_read(SPI2);
 }
 
@@ -90,7 +90,7 @@ static void spi_setup(void)
     spi_reset(SPI2);
 
     spi_init_master(SPI2,
-                    SPI_CR1_BAUDRATE_FPCLK_DIV_64,
+                    SPI_CR1_BAUDRATE_FPCLK_DIV_32,
                     SPI_CR1_CPOL_CLK_TO_0_WHEN_IDLE,
                     SPI_CR1_CPHA_CLK_TRANSITION_1,
                     SPI_CR1_DFF_8BIT,
@@ -203,12 +203,12 @@ int main(void)
                               0x04};
 
     uint8_t status[7];
-
+    uint8_t buf[1518];
     while(1)
     {
         while (1)
         {
-            if (enc28j60_tx_ready(&state))
+        /*    if (enc28j60_tx_ready(&state))
                 break;
             if (enc28j60_tx_err(&state, status))
             {
@@ -217,10 +217,18 @@ int main(void)
                 print(buf, -1);
                 print("tx error", -1);
                 break;
-            }
+            }*/
+            if (enc28j60_has_package(&state))
+                break;
         }
+        uint32_t status, crc;
+        size_t len = enc28j60_read_packet(&state, buf, 1518, &status, &crc);
+        char rb[200];
+        snprintf(rb, 200, "len=%i, crc=%08X, status=%08X. dst = %02X:%02X:%02X:%02X:%02X:%02X src = %02X:%02X:%02X:%02X:%02X:%02X",
+                len, crc, status, buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9], buf[10], buf[11]);
+        print(rb, -1);
+        //enc28j60_send_data(&state, mac, bcast, eth_packet, sizeof(eth_packet));
 
-        enc28j60_send_data(&state, mac, bcast, eth_packet, sizeof(eth_packet));
     }
     return 0;
 }
