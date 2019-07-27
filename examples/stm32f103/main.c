@@ -13,6 +13,8 @@
 #include <stdio.h>
 
 #include <enc28j60.h>
+#include <uip.h>
+#include <uip_arp.h>
 
 static void clock_setup(void)
 {
@@ -127,7 +129,7 @@ void usart1_isr(void)
     }
 }
 
-static void print(const void *data, ssize_t len)
+void print(const void *data, ssize_t len)
 {
     int i;
     if (len < 0)
@@ -158,8 +160,8 @@ static bool print_ready(void)
 }
 
 uint8_t rcvbuf[1518];
-uint8_t mac[6] = {0x0E, 0x00, 0x00, 0x00, 0x00, 0x02};
-uint8_t bcast[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+uint8_t mac[6] = {0x0C, 0x00, 0x00, 0x00, 0x00, 0x02};
+uint8_t ip[4] = {10, 55, 1, 200};
 
 struct enc28j60_state_s state;
 bool configured = false;
@@ -180,27 +182,105 @@ static void enc28j60setup(struct enc28j60_state_s *state)
     enc28j60_interrupt_enable(state, true);
 }
 
-static uint8_t buf[1518];
+#define BUF ((struct uip_eth_hdr *)&uip_buf[0])
+
+void period_timer_reset(void)
+{
+
+}
+
+void arp_timer_reset(void)
+{
+    
+}
+
+bool period_timer_expired(void)
+{
+    return false;    
+}
+
+bool arp_timer_expired(void)
+{
+    return false;    
+}
+
+static void read_pkt(void)
+{
+    uint32_t status, crc;
+    int i;
+    ssize_t len = enc28j60_read_packet(&state, uip_buf, sizeof(uip_buf), &status, &crc);
+    if (len < 0)
+        len = 0;
+
+    uip_len = len;
+    
+    if (uip_len > 0)
+    {
+        print("Packet rcv", -1);
+        if (BUF->type == htons(UIP_ETHTYPE_IP))
+        {
+            print("IP", -1);
+            uip_arp_ipin();
+            uip_input();
+            /*  If the above function invocation resulted in data that
+	            should be sent out on the network, the global variable
+	            uip_len is set to a value > 0. */
+            if (uip_len > 0)
+            {
+                uip_arp_out();
+                enc28j60_send_data(&state, uip_buf, uip_len);
+            }
+        }
+        else if (BUF->type == htons(UIP_ETHTYPE_ARP))
+        {
+            print("ARP", -1);
+            uip_arp_arpin();
+            /*  If the above function invocation resulted in data that
+	            should be sent out on the network, the global variable
+	            uip_len is set to a value > 0. */
+            if (uip_len > 0)
+            {
+                print("ARP response", -1);
+                enc28j60_send_data(&state, uip_buf, uip_len);
+            }
+        }
+    }
+    else if (period_timer_expired())
+    {
+        period_timer_reset();
+        for (i = 0; i < UIP_CONNS; i++)
+        {
+            uip_periodic(i);
+            /* If the above function invocation resulted in data that
+	         should be sent out on the network, the global variable
+	         uip_len is set to a value > 0. */
+            if (uip_len > 0)
+            {
+                uip_arp_out();
+                enc28j60_send_data(&state, uip_buf, uip_len);
+            }
+        }
+
+        /* Call the ARP timer function every 10 seconds. */
+        if (arp_timer_expired())
+        {
+            arp_timer_reset();
+            uip_arp_timer();
+        }
+    }
+}
+
 void exti1_isr(void)
 {
-    if (!configured)
-    {
-        exti_reset_request(EXTI1);
-        return;
-    }
-    if (!enc28j60_has_package(&state))
-    {
-        exti_reset_request(EXTI1);
-        return;
-    }
-
-    uint32_t status, crc;
-    size_t len = enc28j60_read_packet(&state, buf, 1518, &status, &crc);
-    char rb[200];
-    snprintf(rb, 200, "len=%i, crc=%08X, status=%08X. dst = %02X:%02X:%02X:%02X:%02X:%02X src = %02X:%02X:%02X:%02X:%02X:%02X",
-             len, crc, status, buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9], buf[10], buf[11]);
-    print(rb, -1);
     exti_reset_request(EXTI1);
+    if (!configured)
+    {   
+        return;
+    }
+    while (enc28j60_has_package(&state))
+    {
+        read_pkt();
+    }
 }
 
 void hard_fault_handler(void)
@@ -217,8 +297,15 @@ void hard_fault_handler(void)
     }
 }
 
+void shell_appcall(void)
+{
+    print("App call", -1);
+}
+
 int main(void)
 {
+    uip_ipaddr_t ipaddr;
+
     SCB_VTOR = (uint32_t) 0x08000000;
 
     clock_setup();
@@ -230,29 +317,25 @@ int main(void)
 
     enc28j60setup(&state);
 
-    uint8_t eth_packet[60] = {170, 170, 3, 0, 0, 0, 0x08, 0x00,
-                              0x04};
 
-    uint8_t status[7];
+    uip_init();
+
+    uip_ipaddr(ipaddr, 10,55,1,200);
+    uip_sethostaddr(ipaddr);
+
+    uip_ipaddr(ipaddr, 10,55,1,1);
+    uip_setdraddr(ipaddr);
+
+    uip_ipaddr(ipaddr, 255,255,255,0);
+    uip_setnetmask(ipaddr);
     
+    memcpy(uip_ethaddr.addr, mac, 6);
+
+    uip_listen(HTONS(10000));
+
     configured = true;
     while(1)
     {
-        /*while (1)
-        {
-            if (enc28j60_tx_ready(&state))
-                break;
-            if (enc28j60_tx_err(&state, status))
-            {
-                char buf[128];
-                snprintf(buf, 128, "%02X %02X %02X %02X %02X %02X %02X", status[0], status[1], status[2], status[3], status[4], status[5], status[6]);
-                print(buf, -1);
-                print("tx error", -1);
-                break;
-            }
-        }
-        enc28j60_send_data(&state, mac, bcast, eth_packet, sizeof(eth_packet));
-        */
     }
     return 0;
 }

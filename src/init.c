@@ -2,6 +2,8 @@
 #include <registers.h>
 #include <control.h>
 
+const uint8_t enc28j60_eth_bcast[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
 void enc28j60_init(struct enc28j60_state_s *state, uint8_t (*spi_read_write)(uint8_t data), void (*spi_set_cs)(uint8_t val))
 {
     state->spi_rw = spi_read_write;
