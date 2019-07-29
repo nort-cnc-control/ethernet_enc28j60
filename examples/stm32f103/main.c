@@ -297,9 +297,28 @@ void hard_fault_handler(void)
     }
 }
 
+static int
+handle_connection(struct shell_app_state *s)
+{
+    PSOCK_BEGIN(&s->p);
+
+    PSOCK_READTO(&s->p, '\n');
+    PSOCK_SEND_STR(&s->p, "Echo: ");
+    PSOCK_SEND_STR(&s->p, s->inputbuffer);
+
+    PSOCK_END(&s->p);
+}
+
 void shell_appcall(void)
 {
+    int i;
     print("App call", -1);
+    struct shell_app_state *s = &(uip_conn->appstate);
+    if (uip_connected())
+    {
+        PSOCK_INIT(&s->p, s->inputbuffer, sizeof(s->inputbuffer));
+    }
+    handle_connection(s);
 }
 
 int main(void)

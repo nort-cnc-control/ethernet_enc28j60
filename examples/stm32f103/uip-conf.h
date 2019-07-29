@@ -92,8 +92,7 @@ typedef unsigned short uip_stats_t;
 
 typedef struct shell_app_state {
   struct psock p;
-  char inputbuffer[10];
-  char name[40];
+  char inputbuffer[100];
 } uip_tcp_appstate_t;
 
 void shell_appcall();
