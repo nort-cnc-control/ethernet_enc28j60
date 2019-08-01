@@ -186,12 +186,10 @@ static void enc28j60setup(struct enc28j60_state_s *state)
 
 void period_timer_reset(void)
 {
-
 }
 
 void arp_timer_reset(void)
-{
-    
+{   
 }
 
 bool period_timer_expired(void)
@@ -216,15 +214,10 @@ static void read_pkt(void)
     
     if (uip_len > 0)
     {
-        print("Packet rcv", -1);
         if (BUF->type == htons(UIP_ETHTYPE_IP))
         {
-            print("IP", -1);
             uip_arp_ipin();
             uip_input();
-            /*  If the above function invocation resulted in data that
-	            should be sent out on the network, the global variable
-	            uip_len is set to a value > 0. */
             if (uip_len > 0)
             {
                 uip_arp_out();
@@ -233,16 +226,9 @@ static void read_pkt(void)
         }
         else if (BUF->type == htons(UIP_ETHTYPE_ARP))
         {
-            print("ARP", -1);
             uip_arp_arpin();
-            /*  If the above function invocation resulted in data that
-	            should be sent out on the network, the global variable
-	            uip_len is set to a value > 0. */
             if (uip_len > 0)
-            {
-                print("ARP response", -1);
                 enc28j60_send_data(&state, uip_buf, uip_len);
-            }
         }
     }
     else if (period_timer_expired())
@@ -251,9 +237,6 @@ static void read_pkt(void)
         for (i = 0; i < UIP_CONNS; i++)
         {
             uip_periodic(i);
-            /* If the above function invocation resulted in data that
-	         should be sent out on the network, the global variable
-	         uip_len is set to a value > 0. */
             if (uip_len > 0)
             {
                 uip_arp_out();
@@ -261,7 +244,6 @@ static void read_pkt(void)
             }
         }
 
-        /* Call the ARP timer function every 10 seconds. */
         if (arp_timer_expired())
         {
             arp_timer_reset();
@@ -355,6 +337,7 @@ int main(void)
     configured = true;
     while(1)
     {
+
     }
     return 0;
 }

@@ -16,6 +16,7 @@ struct enc28j60_state_s {
     void (*spi_cs)(uint8_t);
 
     uint16_t read_ptr;
+    uint16_t write_ptr;
     uint8_t current_bank;
     uint16_t send_status_addr;
 };
