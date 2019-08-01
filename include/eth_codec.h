@@ -9,7 +9,7 @@
 #define ETHERNET_ADDR_LEN 6
 #define ETHERNET_HEADER_LEN 14
 
-uint16_t enc28j60_ethertype(const uint8_t *data, size_t len);
+uint16_t enc28j60_get_ethertype(const uint8_t *data, size_t len);
 const uint8_t *enc28j60_get_target(const uint8_t *data, size_t len);
 const uint8_t *enc28j60_get_source(const uint8_t *data, size_t len);
 const uint8_t *enc28j60_get_payload(const uint8_t *data, size_t len);

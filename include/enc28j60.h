@@ -8,6 +8,7 @@
 #include <tx.h>
 #include <rx.h>
 #include <state.h>
+#include <eth_codec.h>
 
 extern const uint8_t enc28j60_eth_bcast[6];
 
