@@ -12,7 +12,11 @@
 
 extern const uint8_t enc28j60_eth_bcast[6];
 
-void enc28j60_init(struct enc28j60_state_s *state, uint8_t (*spi_read_write)(uint8_t data), void (*spi_set_cs)(uint8_t val));
+void enc28j60_init(struct enc28j60_state_s *state,
+                   uint8_t (*spi_read_write)(uint8_t data),
+                   void (*spi_set_cs)(uint8_t val),
+                   void (*spi_write_buf)(const uint8_t *, size_t),
+                   void (*spi_read_buf)(uint8_t *, size_t));
 
 void enc28j60_configure(struct enc28j60_state_s *state,
                         const uint8_t *mac,
@@ -20,3 +24,5 @@ void enc28j60_configure(struct enc28j60_state_s *state,
                         bool full_duplex);
 
 void enc28j60_interrupt_enable(struct enc28j60_state_s *state, bool enable);
+
+void enc28j60_fill_payload(uint8_t *buf, const uint8_t *payload, size_t len);

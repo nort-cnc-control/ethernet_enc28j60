@@ -14,6 +14,8 @@ struct enc28j60_state_s {
 
     uint8_t (*spi_rw)(uint8_t);
     void (*spi_cs)(uint8_t);
+    void (*spi_write)(const uint8_t *, size_t);
+    void (*spi_read)(uint8_t *, size_t);
 
     uint16_t read_ptr;
     uint16_t write_ptr;

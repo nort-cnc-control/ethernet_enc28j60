@@ -30,3 +30,8 @@ void enc28j60_fill_header(uint8_t *buf, const uint8_t *src, const uint8_t *dst, 
     buf[12] = ethertype >> 8;
     buf[13] = ethertype & 0xFF;
 }
+
+void enc28j60_fill_payload(uint8_t *buf, const uint8_t *payload, size_t len)
+{
+    memcpy(buf + 14, payload, len);
+}

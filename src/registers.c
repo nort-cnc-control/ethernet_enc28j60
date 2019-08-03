@@ -141,14 +141,12 @@ void enc28j60_clear_phy_bits16(struct enc28j60_state_s *state, uint8_t addr, uin
 
 void enc28j60_write_buffer(struct enc28j60_state_s *state, uint16_t addr, const uint8_t *data, size_t len)
 {
+    if (len == 0)
+        return;
     enc28j60_write_register16(state, EWRPTL, addr);
     state->spi_cs(0);
     state->spi_rw(CMD_WBM);
-    while (len > 0)
-    {
-        state->spi_rw(*(data++));
-        len--;
-    }
+    state->spi_write(data, len);
     state->spi_cs(1);
 }
 
@@ -157,10 +155,6 @@ void enc28j60_read_buffer(struct enc28j60_state_s *state, uint16_t addr, uint8_t
     enc28j60_write_register16(state, ERDPTL, addr);
     state->spi_cs(0);
     state->spi_rw(CMD_RBM);
-    while (len > 0)
-    {
-        *(data++) = state->spi_rw(0xFF);
-        len--;
-    }
+    state->spi_read(data, len);
     state->spi_cs(1);
 }

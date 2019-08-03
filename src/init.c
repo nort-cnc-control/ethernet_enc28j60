@@ -4,10 +4,16 @@
 
 const uint8_t enc28j60_eth_bcast[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
-void enc28j60_init(struct enc28j60_state_s *state, uint8_t (*spi_read_write)(uint8_t data), void (*spi_set_cs)(uint8_t val))
+void enc28j60_init(struct enc28j60_state_s *state,
+                   uint8_t (*spi_read_write)(uint8_t data),
+                   void (*spi_set_cs)(uint8_t val),
+                   void (*spi_write_buf)(const uint8_t *, size_t),
+                   void (*spi_read_buf)(uint8_t *, size_t))
 {
     state->spi_rw = spi_read_write;
     state->spi_cs = spi_set_cs;
+    state->spi_write = spi_write_buf;
+    state->spi_read = spi_read_buf;
 }
 
 void enc28j60_configure(struct enc28j60_state_s *state,
