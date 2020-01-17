@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 
-#include <control.h>
+#include "control.h"
 #include <tx.h>
 #include <rx.h>
 #include <state.h>
