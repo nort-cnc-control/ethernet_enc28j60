@@ -13,12 +13,13 @@
 extern const uint8_t enc28j60_eth_bcast[6];
 
 void enc28j60_init(struct enc28j60_state_s *state,
+                   void (*hard_reset)(bool rst),
                    uint8_t (*spi_read_write)(uint8_t data),
-                   void (*spi_set_cs)(uint8_t val),
+                   void (*spi_set_cs)(bool val),
                    void (*spi_write_buf)(const uint8_t *, size_t),
                    void (*spi_read_buf)(uint8_t *, size_t));
 
-void enc28j60_configure(struct enc28j60_state_s *state,
+bool enc28j60_configure(struct enc28j60_state_s *state,
                         const uint8_t *mac,
                         uint16_t rx_buffer_size,
                         bool full_duplex);

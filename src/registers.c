@@ -12,22 +12,22 @@
 static uint8_t read_register_cb(struct enc28j60_state_s *state, uint8_t addr, bool skip)
 {
     uint8_t cmd = CMD_RCR | (addr & 0x1F);
-    state->spi_cs(0);
+    state->spi_cs(true);
     state->spi_rw(cmd);
     if (skip)
         state->spi_rw(0xFF);
     uint8_t val = state->spi_rw(0xFF);
-    state->spi_cs(1);
+    state->spi_cs(false);
     return val;
 }
 
 static void modify_register_cb(struct enc28j60_state_s *state, uint8_t type, uint8_t addr, uint8_t value)
 {
     uint8_t cmd = type | (addr & 0x1F);
-    state->spi_cs(0);
+    state->spi_cs(true);
     state->spi_rw(cmd);
     state->spi_rw(value);
-    state->spi_cs(1);
+    state->spi_cs(false);
 }
 
 static void select_bank(struct enc28j60_state_s *state, uint8_t bank)
@@ -144,17 +144,17 @@ void enc28j60_write_buffer(struct enc28j60_state_s *state, uint16_t addr, const 
     if (len == 0)
         return;
     enc28j60_write_register16(state, EWRPTL, addr);
-    state->spi_cs(0);
+    state->spi_cs(true);
     state->spi_rw(CMD_WBM);
     state->spi_write(data, len);
-    state->spi_cs(1);
+    state->spi_cs(false);
 }
 
 void enc28j60_read_buffer(struct enc28j60_state_s *state, uint16_t addr, uint8_t *data, size_t len)
 {
     enc28j60_write_register16(state, ERDPTL, addr);
-    state->spi_cs(0);
+    state->spi_cs(true);
     state->spi_rw(CMD_RBM);
     state->spi_read(data, len);
-    state->spi_cs(1);
+    state->spi_cs(false);
 }

@@ -5,18 +5,28 @@
 const uint8_t enc28j60_eth_bcast[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 void enc28j60_init(struct enc28j60_state_s *state,
+                   void (*hard_reset)(bool rst),
                    uint8_t (*spi_read_write)(uint8_t data),
-                   void (*spi_set_cs)(uint8_t val),
+                   void (*spi_set_cs)(bool val),
                    void (*spi_write_buf)(const uint8_t *, size_t),
                    void (*spi_read_buf)(uint8_t *, size_t))
 {
+    state->hard_reset = hard_reset;
     state->spi_rw = spi_read_write;
     state->spi_cs = spi_set_cs;
     state->spi_write = spi_write_buf;
     state->spi_read = spi_read_buf;
 }
 
-void enc28j60_configure(struct enc28j60_state_s *state,
+bool enc28j60_detect(struct enc28j60_state_s *state)
+{
+    int revid = enc28j60_read_register8(state, EREVID);
+    if (revid == 0xFF)
+        return false;
+    return true;
+}
+
+bool enc28j60_configure(struct enc28j60_state_s *state,
                         const uint8_t *mac,
                         uint16_t rx_buffer_size,
                         bool full_duplex)
@@ -29,7 +39,11 @@ void enc28j60_configure(struct enc28j60_state_s *state,
     state->send_buffer_start = rx_buffer_size;
     state->send_buffer_last = 0x1FFF;
 
-    enc28j60_reset(state);
+    enc28j60_hard_reset(state);
+
+    if (!enc28j60_detect(state))
+       return false;
+
     enc28j60_enable_rx(state, 0);
     enc28j60_write_register16(state, ERXSTL, 0);
     enc28j60_write_register16(state, ERXNDL, state->recv_buffer_last);
@@ -110,6 +124,7 @@ void enc28j60_configure(struct enc28j60_state_s *state,
 
     // enable RX
     enc28j60_enable_rx(state, 1);
+    return true;
 }
 
 void enc28j60_interrupt_enable(struct enc28j60_state_s *state, bool enable)

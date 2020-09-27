@@ -1,3 +1,4 @@
+#include <state.h>
 #include <control.h>
 #include <registers.h>
 #include <stdbool.h>
@@ -8,15 +9,27 @@ static volatile int i;
 
 void enc28j60_reset(struct enc28j60_state_s *state)
 {
-    state->spi_cs(0);
+    state->spi_cs(true);
     state->spi_rw(CMD_SRC);
     state->spi_rw(0xFF);
-    state->spi_cs(1);
+    state->spi_cs(false);
     
     for (i = 0; i < 1000000UL; i++)
         __asm__("nop");
     state->current_bank = 0;
 }
+
+void enc28j60_hard_reset(struct enc28j60_state_s *state)
+{
+    state->hard_reset(true);
+    for (i = 0; i < 1000000UL; i++)
+        __asm__("nop");
+    state->hard_reset(false);
+    for (i = 0; i < 1000000UL; i++)
+        __asm__("nop");
+    enc28j60_reset(state);
+}
+
 
 void enc28j60_enable_rx(struct enc28j60_state_s *state, int enable)
 {

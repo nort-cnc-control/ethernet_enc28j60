@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <unistd.h>
 
 struct enc28j60_state_s {
@@ -12,8 +13,9 @@ struct enc28j60_state_s {
 
     size_t recv_buffer_size;
 
+    void (*hard_reset)(bool rst);
     uint8_t (*spi_rw)(uint8_t);
-    void (*spi_cs)(uint8_t);
+    void (*spi_cs)(bool);
     void (*spi_write)(const uint8_t *, size_t);
     void (*spi_read)(uint8_t *, size_t);
 
