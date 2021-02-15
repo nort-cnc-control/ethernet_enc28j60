@@ -21,7 +21,11 @@ void enc28j60_init(struct enc28j60_state_s *state,
 bool enc28j60_detect(struct enc28j60_state_s *state)
 {
     int revid = enc28j60_read_register8(state, EREVID);
-    if (revid == 0xFF)
+    if (revid == 0xFF || revid == 0x00)
+        return false;
+    uint16_t phid1 = enc28j60_read_phy_register16(state, PHID1);
+    uint16_t phid2 = enc28j60_read_phy_register16(state, PHID2);
+    if (phid1 != 0x0083)
         return false;
     return true;
 }
@@ -31,6 +35,7 @@ bool enc28j60_configure(struct enc28j60_state_s *state,
                         uint16_t rx_buffer_size,
                         bool full_duplex)
 {
+    int i;
     state->recv_buffer_size = rx_buffer_size;
 
     state->recv_buffer_start = 0;
@@ -40,7 +45,8 @@ bool enc28j60_configure(struct enc28j60_state_s *state,
     state->send_buffer_last = 0x1FFF;
 
     enc28j60_hard_reset(state);
-
+    enc28j60_reset(state);
+    enc28j60_phy_reset(state);
     if (!enc28j60_detect(state))
        return false;
 
@@ -49,12 +55,11 @@ bool enc28j60_configure(struct enc28j60_state_s *state,
     enc28j60_write_register16(state, ERXNDL, state->recv_buffer_last);
 
     enc28j60_set_bits8(state, ECON2, 1 << 7); // auto increment pointer wher r / w
+    enc28j60_write_register16(state, ERXWRPTL, 0);
+    enc28j60_write_register16(state, ERXRDPTL, 0);
 
     while (enc28j60_read_register8(state, EPKTCNT) > 0)
         enc28j60_set_bits8(state, ECON2, 1<<6);
-
-    enc28j60_write_register16(state, ERXWRPTL, 0);
-    enc28j60_write_register16(state, ERXRDPTL, 0);
 
     // See ENC28J60 datasheet
     // 6.0 Initialization
@@ -68,9 +73,8 @@ bool enc28j60_configure(struct enc28j60_state_s *state,
     // set RXPAUS and TXPAUS
     enc28j60_set_bits8(state, MACON1, (1 << 2) | (1 << 3));
 
-    // set PADCFG to 60 bytes padding and TXCRCEN=1
-    enc28j60_clear_bits8(state, MACON3, 0xF0);
-    enc28j60_set_bits8(state, MACON3, (0 << 7) | (0 << 6) | (1 << 5) | (1 << 4));
+    // set PADCFG to 64 bytes padding and TXCRCEN=1
+    enc28j60_write_register8(state, MACON3, (1 << 7) | (1 << 6) | (1 << 5) | (1 << 4) | (0 << 3) | (0 << 2) | (0 << 1) | (0 << 0));
 
     // DEFER=1 - in half duplex wait for medium released
     enc28j60_set_bits8(state, MACON4, 1 << 6);
@@ -113,13 +117,16 @@ bool enc28j60_configure(struct enc28j60_state_s *state,
     enc28j60_set_phy_bits16(state, PHLCON, (0x4 << 8) | (0x7 << 4));
 
     // set MAC address
-    enc28j60_write_register8(state, MAADR1, mac[0]);
-    enc28j60_write_register8(state, MAADR2, mac[1]);
-    enc28j60_write_register8(state, MAADR3, mac[2]);
-    enc28j60_write_register8(state, MAADR4, mac[3]);
-    enc28j60_write_register8(state, MAADR5, mac[4]);
-    enc28j60_write_register8(state, MAADR6, mac[5]);
+    uint16_t regs[6] = {MAADR1, MAADR2, MAADR3, MAADR4, MAADR5, MAADR6};
 
+    for (i = 0; i < 6; i++)
+    {
+        enc28j60_write_register8(state, regs[i], mac[i]);
+        uint8_t check = enc28j60_read_register8(state, regs[i]);
+        if (check != mac[i])
+            return false;
+    }
+    
     state->read_ptr = state->recv_buffer_start;
 
     // enable RX

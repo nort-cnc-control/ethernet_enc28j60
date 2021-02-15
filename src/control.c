@@ -5,7 +5,13 @@
 
 #define CMD_SRC (0xE0 | 0x1F)
 
-static volatile int i;
+static volatile unsigned long i;
+
+bool enc28j60_link_detect(struct enc28j60_state_s *state)
+{
+    uint16_t ph2 = enc28j60_read_phy_register16(state, PHSTAT2);
+    return (ph2 >> 10) != 0;
+}
 
 void enc28j60_reset(struct enc28j60_state_s *state)
 {
@@ -14,22 +20,29 @@ void enc28j60_reset(struct enc28j60_state_s *state)
     state->spi_rw(0xFF);
     state->spi_cs(false);
     
-    for (i = 0; i < 1000000UL; i++)
+    for (i = 0; i < 100000UL; i++)
         __asm__("nop");
     state->current_bank = 0;
+}
+
+void enc28j60_phy_reset(struct enc28j60_state_s *state)
+{
+    enc28j60_set_phy_bits16(state, PHCON1, 1<<15);
+    
+    while (enc28j60_read_phy_register16(state, PHCON1) & (1<<15))
+        ;
 }
 
 void enc28j60_hard_reset(struct enc28j60_state_s *state)
 {
     state->hard_reset(true);
-    for (i = 0; i < 1000000UL; i++)
+    for (i = 0; i < 100000UL; i++)
         __asm__("nop");
     state->hard_reset(false);
-    for (i = 0; i < 1000000UL; i++)
+    for (i = 0; i < 100000UL; i++)
         __asm__("nop");
-    enc28j60_reset(state);
+//    enc28j60_reset(state);
 }
-
 
 void enc28j60_enable_rx(struct enc28j60_state_s *state, int enable)
 {
